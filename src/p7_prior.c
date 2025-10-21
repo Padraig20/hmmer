@@ -36,7 +36,9 @@
  * Returns:   a pointer to the new <P7_PRIOR> structure.
  */
 P7_PRIOR *
-p7_prior_CreateAmino(void)
+p7_prior_CreateAmino(double tmm, double tmi, double tmd,
+                     double tim, double tii,
+                     double tdm, double tdd)
 {
   P7_PRIOR *pri = NULL;
   int k;
@@ -72,17 +74,17 @@ p7_prior_CreateAmino(void)
    * they were trained on an early version of Pfam. 
    */
   pri->tm->q[0]        = 1.0;
-  pri->tm->alpha[0][0] = 0.7939; /* TMM */
-  pri->tm->alpha[0][1] = 0.0278; /* TMI */ /* Markus suggests ~10x MD, ~0.036; test! */
-  pri->tm->alpha[0][2] = 0.0135; /* TMD */ /* Markus suggests 0.1x MI, ~0.004; test! */
+  pri->tm->alpha[0][0] = tmm; //0.7939; /* TMM */
+  pri->tm->alpha[0][1] = tmi; //0.0278; /* TMI */ /* Markus suggests ~10x MD, ~0.036; test! */
+  pri->tm->alpha[0][2] = tmd; //0.0135; /* TMD */ /* Markus suggests 0.1x MI, ~0.004; test! */
 
   pri->ti->q[0]        = 1.0;
-  pri->ti->alpha[0][0] = 0.1551; /* TIM */
-  pri->ti->alpha[0][1] = 0.1331; /* TII */
+  pri->ti->alpha[0][0] = tim; //0.1551; /* TIM */
+  pri->ti->alpha[0][1] = tii; //0.1331; /* TII */
 
   pri->td->q[0]        = 1.0;
-  pri->td->alpha[0][0] = 0.9002; /* TDM */
-  pri->td->alpha[0][1] = 0.5630; /* TDD */
+  pri->td->alpha[0][0] = tdm; //0.9002; /* TDM */
+  pri->td->alpha[0][1] = tdd; //0.5630; /* TDD */
 
   /* Match emission priors are from Kimmen Sjolander, trained
    * on the Blocks9 database. [Sjolander96]

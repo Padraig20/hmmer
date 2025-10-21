@@ -942,7 +942,7 @@ serial_master(ESL_GETOPTS *go, struct cfg_s *cfg)
 
 
       if (hmmoutfp != NULL) {
-        if ((status = p7_hmmfile_WriteASCII(hmmoutfp, -1, hmm)) != eslOK) ESL_FAIL(status, errbuf, "HMM save failed");
+        if ((status = p7_hmmfile_WriteASCII(hmmoutfp, -1, hmm, 0)) != eslOK) ESL_FAIL(status, errbuf, "HMM save failed");
       }
 
       nquery++;

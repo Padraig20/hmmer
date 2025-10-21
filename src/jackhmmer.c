@@ -1566,7 +1566,7 @@ checkpoint_hmm(int nquery, P7_HMM *hmm, char *basename, int iteration)
   esl_sprintf(&filename, "%s-%d.hmm", basename, iteration);
   if (nquery == 1) { if ((fp = fopen(filename, "w")) == NULL) p7_Fail("Failed to open HMM checkpoint file %s for writing\n", filename); }
   else             { if ((fp = fopen(filename, "a")) == NULL) p7_Fail("Failed to open HMM checkpoint file %s for append\n",  filename); }
-  p7_hmmfile_WriteASCII(fp, -1, hmm);
+  p7_hmmfile_WriteASCII(fp, -1, hmm, 0);
   
   fclose(fp);
   free(filename);

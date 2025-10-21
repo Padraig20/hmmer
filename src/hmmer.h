@@ -1310,6 +1310,8 @@ typedef struct p7_builder_s {
 
   const ESL_ALPHABET  *abc;		 /* COPY of alphabet                                       */
   char errbuf[eslERRBUFSIZE];            /* informative message on model construction failure      */
+
+  int                  return_counts;   /* TRUE to return raw counts along with HMM */
 } P7_BUILDER;
 
 
@@ -1603,7 +1605,7 @@ extern void p7_hmmfile_Close(P7_HMMFILE *hfp);
 extern int  p7_hmmfile_CreateLock(P7_HMMFILE *hfp);
 #endif
 extern int  p7_hmmfile_WriteBinary(FILE *fp, int format, P7_HMM *hmm);
-extern int  p7_hmmfile_WriteASCII (FILE *fp, int format, P7_HMM *hmm);
+extern int  p7_hmmfile_WriteASCII (FILE *fp, int format, P7_HMM *hmm, int return_counts);
 extern int  p7_hmmfile_WriteToString (char **s, int format, P7_HMM *hmm);
 extern int  p7_hmmfile_Read(P7_HMMFILE *hfp, ESL_ALPHABET **ret_abc,  P7_HMM **opt_hmm);
 extern int  p7_hmmfile_PositionByKey(P7_HMMFILE *hfp, const char *key);
@@ -1658,7 +1660,7 @@ extern int p7_pli_Statistics(FILE *ofp, P7_PIPELINE *pli, ESL_STOPWATCH *w);
 
 
 /* p7_prior.c */
-extern P7_PRIOR  *p7_prior_CreateAmino(void);
+extern P7_PRIOR  *p7_prior_CreateAmino(double tmm, double tmi, double tmd, double tim, double tii, double tdm, double tdd);
 extern P7_PRIOR  *p7_prior_CreateNucleic(void);
 extern P7_PRIOR  *p7_prior_CreateLaplace(const ESL_ALPHABET *abc);
 extern void       p7_prior_Destroy(P7_PRIOR *pri);

@@ -58,7 +58,7 @@ main(int argc, char **argv)
 
   while ((status = p7_hmmfile_Read(hfp, &abc, &hmm)) == eslOK)
     {
-      if      (esl_opt_GetBoolean(go, "-a") == TRUE) p7_hmmfile_WriteASCII (ofp, fmtcode, hmm);
+      if      (esl_opt_GetBoolean(go, "-a") == TRUE) p7_hmmfile_WriteASCII (ofp, fmtcode, hmm, 0);
       else if (esl_opt_GetBoolean(go, "-b") == TRUE) p7_hmmfile_WriteBinary(ofp, fmtcode, hmm);
       else if (esl_opt_GetBoolean(go, "-2") == TRUE) p7_h2io_WriteASCII    (ofp, hmm);
 

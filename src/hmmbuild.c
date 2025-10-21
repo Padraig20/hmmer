@@ -103,6 +103,21 @@ static ESL_OPTIONS options[] = {
   { "--pnone",   eslARG_NONE,  FALSE,  NULL, NULL,       NULL,  NULL,"--plaplace", "don't use any prior; parameters are frequencies",      9 },
   { "--plaplace",eslARG_NONE,  FALSE,  NULL, NULL,       NULL,  NULL,   "--pnone", "use a Laplace +1 prior",                               9 },
 
+  /* Options to explicitly set transition priors (expert-only). These allow
+   * users to supply the seven transition prior values directly:
+   *  tmm, tmi, tmd, tim, tii, tdm, tdd
+   */
+  { "--set-tmm", eslARG_REAL,  NULL, NULL, NULL,    NULL,     NULL,    NULL, "set transition prior tmm (MM)",                                9 },
+  { "--set-tmi", eslARG_REAL,  NULL, NULL, NULL,    NULL,     NULL,    NULL, "set transition prior tmi (MI)",                                9 },
+  { "--set-tmd", eslARG_REAL,  NULL, NULL, NULL,    NULL,     NULL,    NULL, "set transition prior tmd (MD)",                                9 },
+  { "--set-tim", eslARG_REAL,  NULL, NULL, NULL,    NULL,     NULL,    NULL, "set transition prior tim (IM)",                                9 },
+  { "--set-tii", eslARG_REAL,  NULL, NULL, NULL,    NULL,     NULL,    NULL, "set transition prior tii (II)",                                9 },
+  { "--set-tdm", eslARG_REAL,  NULL, NULL, NULL,    NULL,     NULL,    NULL, "set transition prior tdm (DM)",                                9 },
+  { "--set-tdd", eslARG_REAL,  NULL, NULL, NULL,    NULL,     NULL,    NULL, "set transition prior tdd (DD)",                                9 },
+
+  /* Choose whether to output transition probabilities or transition counts */
+  { "--return-counts", eslARG_NONE, FALSE, NULL, NULL, NULL, NULL, NULL, "output transition counts", 10 },
+
   /* Single sequence methods */
   { "--singlemx", eslARG_NONE,   FALSE, NULL,   NULL,   NULL,  NULL,           "",   "use substitution score matrix for single-sequence inputs",     10 },
   { "--mx",     eslARG_STRING, "BLOSUM62", NULL, NULL,   NULL, NULL,   "--mxfile",   "substitution score matrix (built-in matrices, with --singlemx)", 10 },
@@ -201,7 +216,7 @@ static void  mpi_init_other_failure(char *format, ...);
 #endif
 
 static int output_header(const ESL_GETOPTS *go, const struct cfg_s *cfg);
-static int output_result(const struct cfg_s *cfg, char *errbuf, int msaidx, ESL_MSA *msa, P7_HMM *hmm, ESL_MSA *postmsa, double entropy);
+static int output_result(const struct cfg_s *cfg, char *errbuf, int msaidx, ESL_MSA *msa, P7_HMM *hmm, ESL_MSA *postmsa, double entropy, int return_counts);
 static int set_msa_name (      struct cfg_s *cfg, char *errbuf, ESL_MSA *msa);
 
 
@@ -338,6 +353,14 @@ output_header(const ESL_GETOPTS *go, const struct cfg_s *cfg)
   if (esl_opt_IsUsed(go, "--mxfile")     && fprintf(cfg->ofp, "# subst score matrix (file):        %s\n",         esl_opt_GetString (go, "--mxfile"))  < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
   if (esl_opt_IsUsed(go, "--maxinsertlen")  && fprintf(cfg->ofp, "# max insert length:                %d\n",         esl_opt_GetInteger (go, "--maxinsertlen"))  < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
 
+  // these is the option for setting priors. 7 double values in total. TMM, TMI, TMD, TIM, TII, TDM, TDD
+  if (esl_opt_IsUsed(go, "--set-tmm")      && fprintf(cfg->ofp, "# tmm prior:             %f\n",         esl_opt_GetReal   (go, "--set-tmm"))   < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
+  if (esl_opt_IsUsed(go, "--set-tmi")      && fprintf(cfg->ofp, "# tmi prior:             %f\n",         esl_opt_GetReal   (go, "--set-tmi"))   < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
+  if (esl_opt_IsUsed(go, "--set-tmd")      && fprintf(cfg->ofp, "# tmd prior:             %f\n",         esl_opt_GetReal   (go, "--set-tmd"))   < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
+  if (esl_opt_IsUsed(go, "--set-tim")      && fprintf(cfg->ofp, "# tim prior:             %f\n",         esl_opt_GetReal   (go, "--set-tim"))   < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
+  if (esl_opt_IsUsed(go, "--set-tii")      && fprintf(cfg->ofp, "# tii prior:             %f\n",         esl_opt_GetReal   (go, "--set-tii"))   < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
+  if (esl_opt_IsUsed(go, "--set-tdm")      && fprintf(cfg->ofp, "# tdm prior:             %f\n",         esl_opt_GetReal   (go, "--set-tdm"))   < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
+  if (esl_opt_IsUsed(go, "--set-tdd")      && fprintf(cfg->ofp, "# tdd prior:             %f\n",         esl_opt_GetReal   (go, "--set-tdd"))   < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");
 
 #ifdef HMMER_THREADS
   if (esl_opt_IsUsed(go, "--cpu")        && fprintf(cfg->ofp, "# number of worker threads:         %d\n",        esl_opt_GetInteger(go, "--cpu"))     < 0) ESL_EXCEPTION_SYS(eslEWRITE, "write failed");  
@@ -545,7 +568,7 @@ usual_master(const ESL_GETOPTS *go, struct cfg_s *cfg)
    * Initial output to the user
    */
   output_header(go, cfg);                                  /* cheery output header                                */
-  output_result(cfg, NULL, 0, NULL, NULL, NULL, 0.0);	   /* tabular results header (with no args, special-case) */
+  output_result(cfg, NULL, 0, NULL, NULL, NULL, 0.0, esl_opt_GetBoolean(go, "--return-counts"));	   /* tabular results header (with no args, special-case) */
 
 #ifdef HMMER_THREADS
   /* initialize thread data */
@@ -753,7 +776,7 @@ mpi_master(const ESL_GETOPTS *go, struct cfg_s *cfg)
   xstatus = eslOK;
   MPI_Bcast(&xstatus, 1, MPI_INT, 0, MPI_COMM_WORLD);
   output_header(go, cfg);                                  /* cheery output header                                */
-  output_result(cfg, NULL, 0, NULL, NULL, NULL, 0.0);	   /* tabular results header (with no args, special-case) */  
+  output_result(cfg, NULL, 0, NULL, NULL, NULL, 0.0, esl_opt_GetBoolean(go, "--return-counts"));	   /* tabular results header (with no args, special-case) */  
   ESL_DPRINTF1(("MPI master is initialized\n"));  
 
   /* Worker initialization:
@@ -823,7 +846,7 @@ mpi_master(const ESL_GETOPTS *go, struct cfg_s *cfg)
 		  } 
 
 		  entropy = p7_MeanMatchRelativeEntropy(hmm, bg);
-		  if ((status = output_result(cfg, errmsg, msaidx[wi], msalist[wi], hmm, postmsa, entropy)) != eslOK) xstatus = status;
+		  if ((status = output_result(cfg, errmsg, msaidx[wi], msalist[wi], hmm, postmsa, entropy, esl_opt_GetBoolean(go, "--return-counts"))) != eslOK) xstatus = status;
 
 		  esl_msa_Destroy(postmsa); postmsa = NULL;
 		  p7_hmm_Destroy(hmm);      hmm     = NULL;
@@ -1050,7 +1073,7 @@ serial_loop(WORKER_INFO *info, struct cfg_s *cfg, const ESL_GETOPTS *go)
         }
       }
       entropy = p7_MeanMatchRelativeEntropy(hmm, info->bg);
-      if ((status = output_result(cfg, errmsg, cfg->nali, msa, hmm, postmsa, entropy))         != eslOK) p7_Fail(errmsg);
+      if ((status = output_result(cfg, errmsg, cfg->nali, msa, hmm, postmsa, entropy, esl_opt_GetBoolean(go, "--return-counts")))         != eslOK) p7_Fail(errmsg);
 
 
 
@@ -1107,7 +1130,7 @@ thread_loop(ESL_THREADS *obj, ESL_WORK_QUEUE *queue, struct cfg_s *cfg, const ES
 
 	/* try to keep the input output order the same */
 	if (item->nali == next) {
-	  sstatus = output_result(cfg, errmsg, item->nali, item->msa, item->hmm, item->postmsa, item->entropy);
+	  sstatus = output_result(cfg, errmsg, item->nali, item->msa, item->hmm, item->postmsa, item->entropy, esl_opt_GetBoolean(go, "--return-counts"));
 	  if (sstatus != eslOK) p7_Fail(errmsg);
 
 	  p7_hmm_Destroy(item->hmm);
@@ -1120,7 +1143,7 @@ thread_loop(ESL_THREADS *obj, ESL_WORK_QUEUE *queue, struct cfg_s *cfg, const ES
 	   * remains the same as read in.
 	   */
 	  while (top != NULL && top->nali == next) {
-	    sstatus = output_result(cfg, errmsg, top->nali, top->msa, top->hmm, top->postmsa, top->entropy);
+	    sstatus = output_result(cfg, errmsg, top->nali, top->msa, top->hmm, top->postmsa, top->entropy, esl_opt_GetBoolean(go, "--return-counts"));
 	    if (sstatus != eslOK) p7_Fail(errmsg);
 
 	    p7_hmm_Destroy(top->hmm);
@@ -1266,7 +1289,7 @@ pipeline_thread(void *arg)
 
 
 static int
-output_result(const struct cfg_s *cfg, char *errbuf, int msaidx, ESL_MSA *msa, P7_HMM *hmm, ESL_MSA *postmsa, double entropy)
+output_result(const struct cfg_s *cfg, char *errbuf, int msaidx, ESL_MSA *msa, P7_HMM *hmm, ESL_MSA *postmsa, double entropy, int return_counts)
 {
   int status;
 
@@ -1286,7 +1309,7 @@ output_result(const struct cfg_s *cfg, char *errbuf, int msaidx, ESL_MSA *msa, P
     return eslOK;
   }
 //  if ((status = p7_hmm_Validate(hmm, errbuf, 0.0001))       != eslOK) return status;
-  if ((status = p7_hmmfile_WriteASCII(cfg->hmmfp, -1, hmm)) != eslOK) ESL_FAIL(status, errbuf, "HMM save failed");
+  if ((status = p7_hmmfile_WriteASCII(cfg->hmmfp, -1, hmm, return_counts)) != eslOK) ESL_FAIL(status, errbuf, "HMM save failed");
 
 	             /* #   name nseq alen M max_length eff_nseq re/pos description */
   if (cfg->abc->type == eslAMINO) {

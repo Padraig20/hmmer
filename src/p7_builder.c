@@ -131,8 +131,15 @@ p7_builder_Create(const ESL_GETOPTS *go, const ESL_ALPHABET *abc)
   else if (go && esl_opt_GetBoolean(go, "--plaplace") )  bld->prior = p7_prior_CreateLaplace(abc);
   else
     {
+      double tmm = esl_opt_GetReal(go, "--set-tmm");
+      double tmi = esl_opt_GetReal(go, "--set-tmi");
+      double tmd = esl_opt_GetReal(go, "--set-tmd");
+      double tim = esl_opt_GetReal(go, "--set-tim");
+      double tii = esl_opt_GetReal(go, "--set-tii");
+      double tdm = esl_opt_GetReal(go, "--set-tdm");
+      double tdd = esl_opt_GetReal(go, "--set-tdd");
       switch (abc->type) {
-      case eslAMINO: bld->prior = p7_prior_CreateAmino();      break;
+      case eslAMINO: bld->prior = p7_prior_CreateAmino(tmm, tmi, tmd, tim, tii, tdm, tdd);      break;
       case eslDNA:   bld->prior = p7_prior_CreateNucleic();    break;
       case eslRNA:   bld->prior = p7_prior_CreateNucleic();    break;
       default:       bld->prior = p7_prior_CreateLaplace(abc); break;
@@ -146,6 +153,8 @@ p7_builder_Create(const ESL_GETOPTS *go, const ESL_ALPHABET *abc)
 
   bld->popen   = -1;
   bld->pextend = -1;
+
+  bld->return_counts = esl_opt_GetBoolean(go, "--return-counts");
 
   return bld;
   
@@ -435,11 +444,13 @@ p7_Builder(P7_BUILDER *bld, ESL_MSA *msa, P7_BG *bg,
     for (i=1; i<hmm->M; i++ )
       hmm->t[i][p7H_II] = ESL_MIN(hmm->t[i][p7H_II], bld->max_insert_len*hmm->t[i][p7H_MI]);
 
-  if ((status =  effective_seqnumber  (bld, msa, hmm, bg))              != eslOK) goto ERROR;
-  if ((status =  parameterize         (bld, hmm))                       != eslOK) goto ERROR;
-  if ((status =  annotate             (bld, msa, hmm))                  != eslOK) goto ERROR;
-  if ((status =  calibrate            (bld, hmm, bg, opt_gm, opt_om))   != eslOK) goto ERROR;
-  if ((status =  make_post_msa        (bld, msa, hmm, tr, opt_postmsa)) != eslOK) goto ERROR;
+    if (!bld->return_counts) {
+      if ((status =  effective_seqnumber  (bld, msa, hmm, bg))              != eslOK) goto ERROR;
+      if ((status =  parameterize         (bld, hmm))                       != eslOK) goto ERROR;
+      if ((status =  annotate             (bld, msa, hmm))                  != eslOK) goto ERROR;
+      if ((status =  calibrate            (bld, hmm, bg, opt_gm, opt_om))   != eslOK) goto ERROR;
+      if ((status =  make_post_msa        (bld, msa, hmm, tr, opt_postmsa)) != eslOK) goto ERROR;
+    }
 
   //force masked positions to background  (it'll be close already, so no relevant impact on weighting)
   if (hmm->mm != NULL)

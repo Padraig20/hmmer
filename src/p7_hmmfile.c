@@ -486,6 +486,7 @@ p7_hmmfile_CreateLock(P7_HMMFILE *hfp)
 static int multiline(FILE *fp, const char *pfx, char *s);
 static int multilineString(char *str, int size, const char *pfx, char *s, int *offset);
 static int printprob(FILE *fp, int fieldwidth, float p);
+static int printcount(FILE *fp, int fieldwidth, int count);
 static int probToString(char *str, int size, int fieldwidth, float p, int offset);
 
 /* Function:  p7_hmmfile_WriteASCII()
@@ -510,7 +511,7 @@ static int probToString(char *str, int size, int fieldwidth, float p, int offset
  *            <eslEWRITE> on write error.
  */
 int
-p7_hmmfile_WriteASCII(FILE *fp, int format, P7_HMM *hmm)
+p7_hmmfile_WriteASCII(FILE *fp, int format, P7_HMM *hmm, int return_counts)
 {
   int k, x;
   int status;
@@ -584,8 +585,19 @@ p7_hmmfile_WriteASCII(FILE *fp, int format, P7_HMM *hmm)
   if (fputc('\n', fp)       < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed");
 
   if (fputs("        ", fp) < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed");
-  for (x = 0; x < p7H_NTRANSITIONS; x++) 
+
+  if (return_counts) {
+    /* return transition counts from node 0 */
+    for (x = 0; x < p7H_NTRANSITIONS; x++) 
+    { if ( (status = printcount(fp, 8, hmm->t[0][x])) != eslOK) return status; }    
+  }
+  else {
+    /* return transition probabilities from node 0 */
+    for (x = 0; x < p7H_NTRANSITIONS; x++) 
     { if ( (status = printprob(fp, 8, hmm->t[0][x])) != eslOK) return status; }    
+  }
+
+    
   if (fputc('\n', fp)       < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed");
   for (k = 1; k <= hmm->M; k++) {
     /* Line 1: k; match emissions; optional map, RF, MM, CS */
@@ -618,8 +630,19 @@ p7_hmmfile_WriteASCII(FILE *fp, int format, P7_HMM *hmm)
     { if ( (status = printprob(fp, 8, hmm->ins[k][x])) != eslOK) return status; }
     /* Line 3:   transitions */
     if (fputs("\n        ", fp) < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed");
-    for (x = 0; x < p7H_NTRANSITIONS; x++)
-    { if ( (status = printprob(fp, 8, hmm->t[k][x])) != eslOK) return status; }
+
+    if (return_counts) {
+      /* return transition counts from node k */
+      for (x = 0; x < p7H_NTRANSITIONS; x++)
+      { if ( (status = printcount(fp, 8, hmm->t[k][x])) != eslOK) return status; }      
+    }
+    else {
+      /* return transition probabilities from node k */
+      for (x = 0; x < p7H_NTRANSITIONS; x++)
+      { if ( (status = printprob(fp, 8, hmm->t[k][x])) != eslOK) return status; }
+    }
+
+
     if (fputc('\n', fp) < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed");
   }
   if (fputs("//\n", fp) < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed");
@@ -2093,6 +2116,13 @@ printprob(FILE *fp, int fieldwidth, float p)
   if      (p == 0.0) { if (fprintf(fp, " %*s",   fieldwidth, "*")      < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed"); }
   else if (p == 1.0) { if (fprintf(fp, " %*.5f", fieldwidth, 0.0)      < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed"); }
   else               { if (fprintf(fp, " %*.5f", fieldwidth, -logf(p)) < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed"); }
+  return eslOK;
+}
+
+static int
+printcount(FILE *fp, int fieldwidth, int count)
+{
+  if (fprintf(fp, " %*d", fieldwidth, count) < 0) ESL_EXCEPTION_SYS(eslEWRITE, "hmm write failed");
   return eslOK;
 }
 
