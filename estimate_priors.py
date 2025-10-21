@@ -112,7 +112,7 @@ def get_new_gap_priors(gp: GapPriors, probs: list[list[float]]) -> GapPriors:
         tdm=e[0], tdd=e[1]
     )
 
-def get_new_gap_priors_easel(gp: GapPriors, probs: list[list[float]]) -> GapPriors:
+def get_new_gap_priors_easel(probs: list[list[float]]) -> GapPriors:
 
     # write probs to temporary CSV files
     tmp_m = tempfile.NamedTemporaryFile(delete=False, suffix="_m.csv")
@@ -245,7 +245,7 @@ if __name__ == "__main__":
         if method == "dirichlet":
             new_gp = get_new_gap_priors(gp, probs)
         elif method == "easel":
-            new_gp = get_new_gap_priors_easel(gp, probs)
+            new_gp = get_new_gap_priors_easel(probs)
         else:
             raise ValueError(f"Unknown method: {method}")
 
